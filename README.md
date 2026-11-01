@@ -1,6 +1,12 @@
 # 2048 AI Edition
 
-A single-file 2048 game with AI-powered features via Pollinations API.
+<p align="center">
+  <a href="https://pollinations.ai">
+    <img src="https://img.shields.io/badge/Made%20with-Pollinations-FF4F9A?style=for-the-badge" alt="Made with Pollinations">
+  </a>
+</p>
+
+A single-file 2048 game with AI-powered features via Pollinations API. Built with the Pollinations image and text models.
 
 ## Features
 
