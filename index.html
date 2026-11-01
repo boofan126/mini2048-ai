@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>2048 AI Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#fff7ec; --sub:rgba(255,247,236,.75);
+    --gold:#ffd166; --accent:#ff6b57;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:'Baloo 2','ZCOOL KuaiLe','PingFang SC','Microsoft YaHei',sans-serif;
+    color:var(--ink);min-height:100%;overflow-x:hidden;
+    display:flex;flex-direction:column;align-items:center;
+    padding:env(safe-area-inset-top) 14px calc(env(safe-area-inset-bottom) + 18px);
+    -webkit-user-select:none;user-select:none;overscroll-behavior:none;
+    background:linear-gradient(160deg,#5b2a86,#e63946 55%,#f9c74f);
+  }
+  /* ===== Background Layers ===== */
+  .bg-layers{position:fixed;inset:0;z-index:0;overflow:hidden}
+  .bg-img{position:absolute;inset:-8%;background-size:cover;background-position:center;
+    filter:blur(6px) saturate(1.25) brightness(.72);opacity:0;animation:bgcycle 18s infinite}
+  .bg-img:nth-child(1){animation-delay:0s}
+  .bg-img:nth-child(2){animation-delay:6s}
+  .bg-img:nth-child(3){animation-delay:12s}
+  @keyframes bgcycle{0%{opacity:0}5%{opacity:1}33%{opacity:1}38%{opacity:0}100%{opacity:0}}
+  .bg-tint{position:absolute;inset:0;background:linear-gradient(180deg,rgba(40,15,60,.35),rgba(20,8,30,.55));pointer-events:none}
+  /* ===== Floating Elements ===== */
+  .floaters{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+  .floater{position:absolute;font-size:22px;opacity:.5;animation:floatUp linear infinite;will-change:transform}
+  @keyframes floatUp{
+    0%{transform:translateY(110vh) rotate(0deg)}
+    100%{transform:translateY(-15vh) rotate(360deg)}
+  }
+  /* ===== Main Content ===== */
+  main{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;align-items:center}
+  .brand{display:flex;align-items:baseline;gap:10px;justify-content:center;margin:14px 0 2px}
+  .brand h1{
+    font-family:'ZCOOL KuaiLe','Baloo 2',sans-serif;font-size:34px;margin:0;letter-spacing:3px;
+    background:linear-gradient(90deg,#ffe29a,#ffd166,#ff9a76,#ff6b57);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 3px 0 rgba(0,0,0,.25));
+    animation:wiggle 3.2s ease-in-out infinite;transform-origin:50% 80%;
+  }
+  @keyframes wiggle{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+  .brand .tag{font-size:13px;color:var(--sub);font-weight:600}
+  .scores{display:flex;gap:12px;margin:14px 0;width:min(92vw,440px);justify-content:center}
+  .score-box{flex:1;max-width:200px;background:rgba(255,255,255,.14);backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.22);border-radius:18px;padding:9px 4px 7px;text-align:center;
+    box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  .score-box .lbl{font-size:12px;color:var(--sub);letter-spacing:1px}
+  .score-box .val{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+  /* ===== Buttons ===== */
+  .btns{display:flex;gap:12px;width:min(92vw,440px);margin-bottom:10px}
+  .btn{flex:1;border:none;border-radius:999px;padding:14px 0;font-size:16px;font-weight:800;cursor:pointer;
+    font-family:inherit;color:#5a2800;letter-spacing:1px;
+    transition:transform .12s cubic-bezier(.34,1.56,.64,1),box-shadow .15s ease,filter .15s ease}
+  .btn:hover{filter:brightness(1.06)}
+  .btn:active{transform:scale(.94)}
+  .btn-new{background:linear-gradient(180deg,#ffe29a,var(--gold));color:#5a2800;
+    box-shadow:0 6px 0 #c99b2f,0 12px 22px rgba(0,0,0,.25)}
+  .btn-new:active{box-shadow:0 2px 0 #c99b2f,0 6px 14px rgba(0,0,0,.25);transform:translateY(4px) scale(.98)}
+  .btn-share{background:rgba(255,255,255,.16);color:var(--ink);border:2px solid rgba(255,255,255,.35);
+    backdrop-filter:blur(8px);box-shadow:0 6px 0 rgba(0,0,0,.22),0 12px 22px rgba(0,0,0,.2)}
+  .btn-share:active{box-shadow:0 2px 0 rgba(0,0,0,.22);transform:translateY(4px) scale(.98)}
+  .btn-rules{background:linear-gradient(180deg,#8be9c0,#34c79a);color:#0b3d2e;
+    box-shadow:0 6px 0 #1f8a6b,0 12px 22px rgba(0,0,0,.22)}
+  .btn-rules:active{box-shadow:0 2px 0 #1f8a6b,0 6px 14px rgba(0,0,0,.22);transform:translateY(4px) scale(.98)}
+  .btn-sound{flex:0 0 50px;padding:0;font-size:20px;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.16);color:var(--ink);border:2px solid rgba(255,255,255,.35);
+    backdrop-filter:blur(8px);box-shadow:0 6px 0 rgba(0,0,0,.22),0 12px 22px rgba(0,0,0,.2)}
+  .btn-sound:active{box-shadow:0 2px 0 rgba(0,0,0,.22);transform:translateY(4px) scale(.98)}
+  .btn{white-space:nowrap}
+  /* ===== AI Feature Buttons ===== */
+  .ai-section{display:flex;gap:8px;width:min(92vw,440px);margin-bottom:10px}
+  .btn-ai{flex:1;border:none;border-radius:999px;padding:11px 0;font-size:14px;font-weight:700;cursor:pointer;
+    font-family:inherit;color:#fff;letter-spacing:1px;
+    transition:transform .12s cubic-bezier(.34,1.56,.64,1),box-shadow .15s ease,filter .15s ease}
+  .btn-ai:hover{filter:brightness(1.1)}
+  .btn-ai:active{transform:scale(.94)}
+  .btn-skin{background:linear-gradient(180deg,#a855f7,#7c3aed);color:#fff;
+    box-shadow:0 4px 0 #5b21b6,0 8px 16px rgba(0,0,0,.25)}
+  .btn-skin:active{box-shadow:0 1px 0 #5b21b6,0 4px 10px rgba(0,0,0,.25);transform:translateY(3px) scale(.97)}
+  .btn-hint{background:linear-gradient(180deg,#06b6d4,#0891b2);color:#fff;
+    box-shadow:0 4px 0 #0e7490,0 8px 16px rgba(0,0,0,.25)}
+  .btn-hint:active{box-shadow:0 1px 0 #0e7490,0 4px 10px rgba(0,0,0,.25);transform:translateY(3px) scale(.97)}
+  .skin-reset{flex:0 0 40px;padding:0;font-size:16px;background:rgba(255,255,255,.14);
+    color:var(--ink);border:2px solid rgba(255,255,255,.3);border-radius:999px;cursor:pointer;
+    backdrop-filter:blur(8px);box-shadow:0 4px 0 rgba(0,0,0,.2)}
+  .skin-reset:active{transform:translateY(3px) scale(.95)}
+  /* ===== Game Board ===== */
+  .board-wrap{position:relative;width:min(92vw,440px);aspect-ratio:1}
+  .game-board{position:absolute;inset:0;border-radius:26px;
+    background:rgba(255,255,255,.12);backdrop-filter:blur(14px);
+    box-shadow:0 18px 50px rgba(0,0,0,.35),inset 0 0 0 2px rgba(255,255,255,.25);
+    transition:background .4s ease}
+  .grid-bg{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);
+    grid-template-rows:repeat(4,1fr);gap:var(--gap);padding:var(--gap)}
+  .grid-cell{background:rgba(255,255,255,.13);border-radius:14px;
+    box-shadow:inset 0 2px 6px rgba(0,0,0,.08)}
+  .tile-container{position:absolute;inset:0}
+  .tile{position:absolute;width:var(--tile-size);height:var(--tile-size);
+    transform:translate(calc(var(--gap) + var(--col)*(var(--tile-size) + var(--gap))),
+                       calc(var(--gap) + var(--row)*(var(--tile-size) + var(--gap))));
+    transition:transform 110ms ease-in-out;will-change:transform}
+  .tile-inner{width:100%;height:100%;border-radius:16px;display:flex;align-items:center;justify-content:center;
+    font-weight:800;color:#4a2c00;line-height:1;
+    box-shadow:0 5px 0 rgba(0,0,0,.16),inset 0 2px 0 rgba(255,255,255,.55)}
+  .tile-new .tile-inner{animation:pop .16s ease}
+  .tile-merged .tile-inner{animation:merge .18s ease}
+  @keyframes pop{0%{transform:scale(.3) rotate(-8deg);opacity:.3}70%{transform:scale(1.08) rotate(2deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+  @keyframes merge{0%{transform:scale(1)}45%{transform:scale(1.22) rotate(-3deg)}100%{transform:scale(1) rotate(0)}}
+  /* Candy Rainbow Color Scale */
+  .t2{background:linear-gradient(180deg,#fffdf4,#fff3d6)}
+  .t4{background:linear-gradient(180deg,#fff0d4,#ffe3b0)}
+  .t8{background:linear-gradient(180deg,#ffc9b8,#ffab92)}
+  .t16{background:linear-gradient(180deg,#ff9d85,#ff7f63);color:#fff}
+  .t32{background:linear-gradient(180deg,#ff7a5c,#f4593b);color:#fff}
+  .t64{background:linear-gradient(180deg,#ef4d4d,#d92b3a);color:#fff}
+  .t128{background:linear-gradient(180deg,#ffd76e,#ffb930);color:#5a3d00;
+    box-shadow:0 5px 0 rgba(0,0,0,.16),0 0 14px rgba(255,190,60,.55),inset 0 2px 0 rgba(255,255,255,.6)}
+  .t256{background:linear-gradient(180deg,#ffb14d,#ff8c1a);color:#fff;
+    box-shadow:0 5px 0 rgba(0,0,0,.16),0 0 16px rgba(255,150,40,.6),inset 0 2px 0 rgba(255,255,255,.5)}
+  .t512{background:linear-gradient(180deg,#ff85b3,#ff4f95);color:#fff;
+    box-shadow:0 5px 0 rgba(0,0,0,.16),0 0 16px rgba(255,90,150,.6),inset 0 2px 0 rgba(255,255,255,.45)}
+  .t1024{background:linear-gradient(180deg,#b07de8,#8f4fd1);color:#fff;
+    box-shadow:0 5px 0 rgba(0,0,0,.16),0 0 18px rgba(160,90,220,.65),inset 0 2px 0 rgba(255,255,255,.4)}
+  .t2048{background:linear-gradient(160deg,#fff3b8,#ffd166 45%,#ff9a3d);color:#5a3d00;
+    box-shadow:0 5px 0 rgba(0,0,0,.18),0 0 26px rgba(255,209,102,.9),inset 0 2px 0 rgba(255,255,255,.7);
+    animation:shine 1.6s ease-in-out infinite}
+  @keyframes shine{0%,100%{filter:brightness(1)}50%{filter:brightness(1.15)}}
+  .tsuper{background:linear-gradient(135deg,#12c2e9,#c471ed 50%,#f64f59);color:#fff;
+    box-shadow:0 5px 0 rgba(0,0,0,.18),0 0 26px rgba(200,120,240,.8),inset 0 2px 0 rgba(255,255,255,.45)}
+  /* ===== Overlay ===== */
+  .overlay{position:absolute;inset:0;border-radius:26px;display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    background:rgba(30,12,45,.78);backdrop-filter:blur(6px);z-index:5;text-align:center;padding:22px}
+  .overlay.show{display:flex;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .overlay h2{margin:0;font-size:36px;font-family:'ZCOOL KuaiLe','Baloo 2',sans-serif}
+  .overlay.win h2{color:var(--gold);text-shadow:0 0 18px rgba(255,209,102,.7)}
+  .overlay .sub{color:var(--sub);font-size:15px;max-width:280px}
+  .overlay .emoji-big{font-size:52px;animation:bounce 1s ease-in-out infinite}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+  .overlay .btn{width:auto;padding:13px 34px;margin:0}
+  .foot{color:var(--sub);font-size:11.5px;margin-top:18px;text-align:center;line-height:1.8;opacity:.85}
+  .foot a{color:var(--gold)}
+  .toast{position:fixed;left:50%;bottom:44px;transform:translateX(-50%) translateY(20px);
+    background:rgba(0,0,0,.8);color:#fff;padding:11px 20px;border-radius:999px;font-size:13.5px;opacity:0;
+    transition:all .25s ease;pointer-events:none;z-index:20;backdrop-filter:blur(6px)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* Confetti */
+  .confetti{position:fixed;top:-16px;z-index:30;pointer-events:none;font-size:16px;
+    animation:fall linear forwards;will-change:transform}
+  @keyframes fall{
+    0%{transform:translateY(-5vh) rotate(0)}
+    100%{transform:translateY(108vh) rotate(660deg)}
+  }
+  /* ===== Rules Modal ===== */
+  .btn-rules{background:linear-gradient(180deg,#8be9c0,#34c79a);color:#0b3d2e;
+    box-shadow:0 6px 0 #1f8a6b,0 12px 22px rgba(0,0,0,.22)}
+  .btn-rules:active{box-shadow:0 2px 0 #1f8a6b,0 6px 14px rgba(0,0,0,.22);transform:translateY(4px) scale(.98)}
+  .modal{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
+    background:rgba(20,8,30,.62);backdrop-filter:blur(4px);padding:18px}
+  .modal.show{display:flex;animation:fade .25s ease}
+  .rules-card{width:min(92vw,460px);max-height:84vh;overflow-y:auto;border-radius:24px;padding:22px 22px 18px;
+    background:rgba(255,255,255,.14);backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,.25);box-shadow:0 22px 60px rgba(0,0,0,.4);-webkit-overflow-scrolling:touch}
+  .rules-card::-webkit-scrollbar{width:0}
+  .rules-card h2{margin:0 0 2px;font-family:'ZCOOL KuaiLe','Baloo 2',sans-serif;font-size:25px;text-align:center;
+    background:linear-gradient(90deg,#ffe29a,#ffd166,#ff9a76);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .rules-card .rs-sub{text-align:center;color:var(--sub);font-size:12.5px;margin-bottom:14px}
+  .rules-card .r-sec{margin:0 0 15px}
+  .rules-card .r-sec h3{margin:0 0 6px;font-size:15.5px;color:var(--gold);display:flex;align-items:center;gap:6px}
+  .rules-card .r-sec p,.rules-card .r-sec li{margin:0;color:var(--ink);font-size:13.5px;line-height:1.7}
+  .rules-card ul{margin:4px 0 0;padding-left:18px}
+  .rules-card b{color:#fff;font-weight:800}
+  .rules-card .demo{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0 4px}
+  .rules-card .demo .d{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:20px;color:#4a2c00;box-shadow:0 4px 0 rgba(0,0,0,.16),inset 0 2px 0 rgba(255,255,255,.5)}
+  .rules-card .demo .arrow{font-size:22px;color:var(--sub)}
+  .rules-card .r-close{width:100%;margin-top:4px;padding:13px 0;font-size:16px}
+
+  /* ===== AI Hint Panel ===== */
+  .hint-panel{position:fixed;left:50%;bottom:80px;transform:translateX(-50%) translateY(20px);
+    width:min(92vw,420px);background:rgba(20,8,30,.94);backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:16px 18px;z-index:25;
+    opacity:0;transition:all .3s ease;pointer-events:none}
+  .hint-panel.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .hint-panel .hint-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .hint-panel .hint-title{font-size:14px;font-weight:700;color:var(--gold);display:flex;align-items:center;gap:6px}
+  .hint-panel .hint-close{background:none;border:none;color:var(--sub);font-size:22px;cursor:pointer;line-height:1;padding:0 4px}
+  .hint-panel .hint-close:hover{color:var(--ink)}
+  .hint-panel .hint-text{font-size:14px;line-height:1.7;color:var(--ink)}
+
+  /* ===== Skin Indicator ===== */
+  .skin-bar{position:fixed;top:12px;right:12px;z-index:10;display:flex;align-items:center;gap:6px}
+  .skin-indicator{background:rgba(0,0,0,.45);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:6px 14px;
+    font-size:12px;color:var(--ink);white-space:nowrap}
+  .skin-reset-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+    color:var(--ink);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:14px;
+    display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+  .skin-reset-btn:hover{background:rgba(255,255,255,.2)}
+
+  /* ===== Loading Toast ===== */
+  .loading-toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(0,0,0,.9);color:#fff;padding:18px 28px;border-radius:16px;font-size:14px;
+    z-index:50;display:flex;align-items:center;gap:12px;backdrop-filter:blur(8px)}
+  .loading-toast.show{display:flex}
+  .spinner{width:20px;height:20px;border:2px solid rgba(255,255,255,.3);
+    border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+  <div class="bg-layers">
+    <div class="bg-img" style="background-image:url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAgEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABFjcHJ0AAABUAAAADNkZXNjAAABhAAAAGx3dHB0AAAB8AAAABRia3B0AAACBAAAABRyWFlaAAACGAAAABRnWFlaAAACLAAAABRiWFlaAAACQAAAABRkbW5kAAACVAAAAHBkbWRkAAACxAAAAIh2dWVkAAADTAAAAIZ2aWV3AAAD1AAAACRsdW1pAAAD+AAAABRtZWFzAAAEDAAAACR0ZWNoAAAEMAAAAAxyVFJDAAAEPAAACAxnVFJDAAAEPAAACAxiVFJDAAAEPAAACAx0ZXh0AAAAAENvcHlyaWdodCAoYykgMTk5OCBIZXdsZXR0LVBhY2thcmQgQ29tcGFueQAAZGVzYwAAAAAAAAASc1JHQiBJRUM2MTk2Ni0yLjEAAAAAAAAAAAAAABJzUkdCIElFQzYxOTY2LTIuMQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWFlaIAAAAAAAAPNRAAEAAAABFsxYWVogAAAAAAAAAAAAAAAAAAAAAFhZWiAAAAAAAABvogAAOPUAAAOQWFlaIAAAAAAAAGKZAAC3hQAAGNpYWVogAAAAAAAAJKAAAA+EAAC2z2Rlc2MAAAAAAAAAFklFQyBodHRwOi8vd3d3LmllYy5jaAAAAAAAAAAAAAAAFklFQyBodHRwOi8vd3d3LmllYy5jaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABkZXNjAAAAAAAAAC5JRUMgNjE5NjYtMi4xIERlZmF1bHQgUkdCIGNvbG91ciBzcGFjZSAtIHNSR0IAAAAAAAAAAAAAAC5JRUMgNjE5NjYtMi4xIERlZmF1bHQgUkdCIGNvbG91ciBzcGFjZSAtIHNSR0IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZGVzYwAAAAAAAAAsUmVmZXJlbmNlIFZpZXdpbmcgQ29uZGl0aW9uIGluIElFQzYxOTY2LTIuMQAAAAAAAAAAAAAALFJlZmVyZW5jZSBWaWV3aW5nIENvbmRpdGlvbiBpbiBJRUM2MTk2Ni0yLjEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHZpZXcAAAAAABOk/gAUXy4AEM8UAAPtzAAEEwsAA1yeAAAAAVhZWiAAAAAAAEwJVgBQAAAAVx/nbWVhcwAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAo8AAAACc2lnIAAAAABDUlQgY3VydgAAAAAAAAQAAAAABQAKAA8AFAAZAB4AIwAoAC0AMgA3ADsAQABFAEoATwBUAFkAXgBjAGgAbQByAHcAfACBAIYAiwCQAJUAmgCfAKQAqQCuALIAtwC8AMEAxgDLANAA1QDbAOAA5QDrAPAA9gD7AQEBBwENARMBGQEfASUBKwEyATgBPgFFAUwBUgFZAWABZwFuAXUBfAGDAYsBkgGaAaEBqQGxAbkBwQHJAdEB2QHhAekB8gH6AgMCDAIUAh0CJgIvAjgCQQJLAlQCXQJnAnECegKEAo4CmAKiAqwCtgLBAssC1QLgAusC9QMAAwsDFgMhAy0DOANDA08DWgNmA3IDfgOKA5YDogOuA7oDxwPTA+AD7AP5BAYEEwQgBC0EOwRIBFUEYwRxBH4EjASaBKgEtgTEBNME4QTwBP4F... [truncated base64, kept as-is from original]">
+    <div class="bg-img" style="background-image:url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAgEASABIAAD/4gJASUNDX1BST0ZJTEUAAQEAAAIwQURCRQIQAABtbnRyUkdCIFhZWiAHzwAGAAMAAAAAAABhY3NwQVBQTAAAAABub25lAAAAAAAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUFEQkUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAApjcHJ0AAAA/AAAADJkZXNjAAABMAAAAGt3dHB0AAABnAAAABRia3B0AAABsAAAABRyVFJDAAABxAAAAA5nVFJDAAAB1AAAAA5iVFJDAAAB5AAAAA5yWFlaAAAB9AAAABRnWFlaAAACCAAAABRiWFlaAAACHAAAABR0ZXh0AAAAAENvcHlyaWdodCAxOTk5IEFkb2JlIFN5c3RlbXMgSW5jb3Jwb3JhdGVkAAAAZGVzYwAAAAAAAAARQWRvYmUgUkdCICgxOTk4KQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWFlaIAAAAAAAAPNRAAEAAAABFsxYWVogAAAAAAAAAAAAAAAAAAAAAGN1cnYAAAAAAAAAAQIzAABjdXJ2AAAAAAAAAAECMwAAY3VydgAAAAAAAAABAjMAAFhZWiAAAAAAAACcGAAAT6UAAAT8WFlaIAAAAAAAADSNAACgLAAAD5VYWVogAAAAAAAAJjEAABAvAAC+nP/bAEMABAMDBAMDBAQDBAUEBAUGCgcGBgYGDQkKCAoPDRAQDw0PDhETGBQREhcSDg8VHBUXGRkbGxsQFB0fHRofGBobGv/bAEMBBAUFBgUGDAcHDBoRDxEaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGhoaGv/CABEIAlgDhAMBIgACEQEDEQH/xAAcAAABBQEBAQAAAAAAAAAAAAACAQMEBQYABwj/xAAbAQACAwEBAQAAAAAAAAAAAAABAgADBAUGB//aAAwDAQACEQMRAAAB8s4km5SFZDNtyQzBww3W3YHXmpBj0pmeRM2NNsWrsSKprrrPOrfGgs1RsTmoSGaidByJzvS2RzXwfQ7KZtw/JTVCptBSrMJndPmXyVcWSxJHakIL4ECVBHc4xM7CNCXB3Ly8seVGK8iyIJoIHF0nOAYJm2QjwckgONukI2YQOToVgBYuRyUONKhAOvTia5ufGmyIzKZVojcgVyNSW52PZJFWvNdngIXAOtPRnO5a0bB0GVkXAsCCaEgh8YPLxgoSGISKIAlzAy7kiutuoDnsXpEZJAOPNwcT1xaUkj84BmG427I4809I9JYmESbqFpmW30NfIFBY2b54oh0KxRhXu6Z+cFwqclJhUbhjRPVdbjP61pM4+q2RaK7z0qyWW1WdfHTN2Ii2HDn5+dKvDunXVxtyM4oLKnUdFOE2hjAnLxncqgAhpDxIYnKqQr3dIjrbsjYkkV2dDlSPlGciyn2L5q5Uy+hQZaDbVyb4TMtpLYrbwSjpjZ+d7PNm3h1LxPBYhm2zSCE6oIPDK44PtWK3xc8DiSEUJCBQkMReWRteMheLlivtzEE+9jzNCU4COdvODjH7iiRzblV3FxS3nWzZnn2JMEixh2hFpoaGaatJV0eYWiVlEhLiQhOZu7jgWU3PKuTQsisjR12mtzXOjrLFdcoYshLoNJoqKVZKgvqE54UR/ODeVXKi6rIXctHaIhKQu7oJLsWcnJjC8AwAhdChIUgcSCcXLIXL0IiYyK62cIdxFXnQKBZDVg1cvdVW8NbVFqs6tuTrLStXVGjyY63xnn0xXNCTfmu2opxRyVDeRTYdCHn47wY+... [truncated base64, kept as-is from original]">
+    <div class="bg-img" style="background-image:url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAgEASABIAAD/4gxYSUNDX1BST0ZJTEUAAQEAAAxITGlubwIQAABtbnRyUkdCIFhZWiAHzgACAAkABgAxAABhY3NwTVNGVAAAAABJRUMgc1JHQgAAAAAAAAAAAAAAAAAA9tYAAQAAAADTLUhQICAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABFjcHJ0AAABUAAAADNkZXNjAAABhAAAAGx3dHB0AAAB8AAAABRia3B0AAACBAAAABRyWFlaAAACGAAAABRnWFlaAAACLAAAABRiWFlaAAACQAAAABRkbW5kAAACVAAAAHBkbWRkAAACxAAAAIh2dWVkAAADTAAAAIZ2aWV3AAAD1AAAACRsdW1pAAAD+AAAABRtZWFzAAAEDAAAACR0ZWNoAAAEMAAAAAxyVFJDAAAEPAAACAxnVFJDAAAEPAAACAxiVFJDAAAEPAAACAx0ZXh0AAAAAENvcHlyaWdodCAoYykgMTk5OCBIZXdsZXR0LVBhY2thcmQgQ29tcGFueQAAZGVzYwAAAAAAAAASc1JHQiBJRUM2MTk2Ni0yLjEAAAAAAAAAAAAAABJzUkdCIElFQzYxOTY2LTIuMQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWFlaIAAAAAAAAPNRAAEAAAABFsxYWVogAAAAAAAAAAAAAAAAAAAAAFhZWiAAAAAAAABvogAAOPUAAAOQWFlaIAAAAAAAAGKZAAC3hQAAGNpYWVogAAAAAAAAJKAAAA+EAAC2z2Rlc2MAAAAAAAAAFklFQyBodHRwOi8vd3d3LmllYy5jaAAAAAAAAAAAAAAAFklFQyBodHRwOi8vd3d3LmllYy5jaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABkZXNjAAAAAAAAAC5JRUMgNjE5NjYtMi4xIERlZmF1bHQgUkdCIGNvbG91ciBzcGFjZSAtIHNSR0IAAAAAAAAAAAAAAC5JRUMgNjE5NjYtMi4xIERlZmF1bHQgUkdCIGNvbG91ciBzcGFjZSAtIHNSR0IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAZGVzYwAAAAAAAAAsUmVmZXJlbmNlIFZpZXdpbmcgQ29uZGl0aW9uIGluIElFQzYxOTY2LTIuMQAAAAAAAAAAAAAALFJlZmVyZW5jZSBWaWV3aW5nIENvbmRpdGlvbiBpbiBJRUM2MTk2Ni0yLjEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHZpZXcAAAAAABOk/gAUXy4AEM8UAAPtzAAEEwsAA1yeAAAAAVhZWiAAAAAAAEwJVgBQAAAAVx/nbWVhcwAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAo8AAAACc2lnIAAAAABDUlQgY3VydgAAAAAAAAQAAAAABQAKAA8AFAAZAB4AIwAoAC0AMgA3ADsAQABFAEoATwBUAFkAXgBjAGgAbQByAHcAfACBAIYAiwCQAJUAmgCfAKQAqQCuALIAtwC8AMEAxgDLANAA1QDbAOAA5QDrAPAA9gD7AQEBBwENARMBGQEfASUBKwEyATgBPgFFAUwBUgFZAWABZwFuAXUBfAGDAYsBkgGaAaEBqQGxAbkBwQHJAdEB2QHhAekB8gH6AgMCDAIUAh0CJgIvAjgCQQJLAlQCXQJnAnECegKEAo4CmAKiAqwCtgLBAssC1QLgAusC9QMAAwsDFgMhAy0DOANDA08DWgNmA3IDfgOKA5YDogOuA7oDxwPTA+AD7AP5BAYEEwQgBC0EOwRIBFUEYwRxBH4EjASaBKgEtgTEBNME4QTwBP4F... [truncated base64, kept as-is from original]">
+    <div class="bg-tint"></div>
+  </div>
+  <div class="floaters" id="floaters"></div>
+
+  <!-- Skin Indicator + Reset -->
+  <div class="skin-bar">
+    <div class="skin-indicator" id="skinIndicator">🍬 Candy Land</div>
+    <button class="skin-reset-btn" id="skinResetBtn" title="Reset to default skin">↻</button>
+  </div>
+
+  <main>
+    <div class="brand">
+      <h1>2048</h1><span class="tag">AI Edition</span>
+    </div>
+
+    <div class="scores">
+      <div class="score-box"><div class="lbl">🏆 Score</div><div class="val" id="score">0</div></div>
+      <div class="score-box"><div class="lbl">👑 Best</div><div class="val" id="best">0</div></div>
+    </div>
+
+    <div class="ai-section">
+      <button class="btn-ai btn-skin" id="aiSkinBtn">🎨 AI Skin</button>
+      <button class="btn-ai btn-hint" id="aiHintBtn">💡 AI Hint</button>
+    </div>
+
+    <div class="btns">
+      <button class="btn btn-new" id="newGame">🎮 New Game</button>
+      <button class="btn btn-rules" id="rulesBtn">❓ Rules</button>
+      <button class="btn btn-share" id="shareBtn">🚀 Share</button>
+      <button class="btn btn-sound" id="feedbackBtn" aria-label="Sound &amp; vibration toggle">🔊</button>
+    </div>
+
+    <div class="board-wrap">
+      <div class="game-board" id="board">
+        <div class="grid-bg" id="gridBg"></div>
+        <div class="tile-container" id="tileContainer"></div>
+        <div class="overlay" id="overlay">
+          <div class="emoji-big" id="ovEmoji">🎉</div>
+          <h2 id="ovTitle">Game Over</h2>
+          <div class="sub" id="ovSub"></div>
+          <button class="btn btn-new" id="ovBtn">Play Again</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      Swipe / arrow keys to move · Merge matching numbers · Reach 2048<br>
+      Based on <a href="https://github.com/gabrielecirulli/2048" target="_blank" rel="noopener">gabrielecirulli/2048</a> (MIT) · AI skins by Pollinations flux-2-dev-free · Hints by qwen3.7-flash · © 2026 AI Edition
+    </div>
+  </main>
+
+  <!-- Rules Modal -->
+  <div class="modal" id="rulesModal">
+    <div class="rules-card">
+      <h2>🍬 How to Play</h2>
+      <div class="rs-sub">2048 AI Edition</div>
+
+      <div class="r-sec">
+        <h3>🎯 Goal</h3>
+        <p>Merge tiles all the way up to <b>2048</b>! Keep going past 2048 — see how far you can push.</p>
+      </div>
+
+      <div class="r-sec">
+        <h3>🕹 Controls</h3>
+        <ul>
+          <li>Mobile: <b>swipe up / down / left / right</b> on the board. Desktop: <b>arrow keys / WASD</b> to move, <b>R</b> to restart.</li>
+          <li>All tiles slide in the same direction. Tiles with the <b>same number</b> merge into a <b>doubled</b> tile.</li>
+        </ul>
+        <div class="demo">
+          <div class="d t2">2</div><div class="d t2">2</div><span class="arrow">→</span><div class="d t4">4</div>
+        </div>
+        <ul>
+          <li>After each valid move, a new tile (<b>2</b> most of the time, occasionally <b>4</b>) spawns randomly.</li>
+          <li>Each tile can only merge <b>once per move</b> — plan your route before sliding.</li>
+        </ul>
+      </div>
+
+      <div class="r-sec">
+        <h3>💡 Pro Tips</h3>
+        <ul>
+          <li>Pick a corner as your "home base" (e.g. bottom-left) and keep the largest tile there.</li>
+          <li>Keep rows/columns in descending order to leave room for movement.</li>
+          <li>Don't scatter large tiles — they'll trap you fast.</li>
+        </ul>
+      </div>
+
+      <div class="r-sec">
+        <h3>🏁 End &amp; Scoring</h3>
+        <ul>
+          <li>Game over when the board is full and no moves are left in any direction.</li>
+          <li>Each merge adds the new tile's value to your score. Your best score is auto-saved.</li>
+        </ul>
+      </div>
+
+      <div class="r-sec">
+        <h3>🤖 AI Assistant</h3>
+        <ul>
+          <li>Click <b>🎨 AI Skin</b> to generate a new game skin via Pollinations <b>flux-2-dev-free</b>.</li>
+          <li>Click <b>💡 AI Hint</b> to get strategic advice from the <b>qwen3.7-flash</b> text model.</li>
+        </ul>
+      </div>
+
+      <button class="btn btn-new r-close" id="rulesClose">Got it, let's play!</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- AI Hint Panel -->
+  <div class="hint-panel" id="hintPanel">
+    <div class="hint-header">
+      <span class="hint-title">💡 AI Hint</span>
+      <button class="hint-close" id="hintClose">×</button>
+    </div>
+    <div class="hint-text" id="hintText"></div>
+  </div>
+
+  <!-- Loading Toast -->
+  <div class="loading-toast" id="loadingToast">
+    <div class="spinner"></div>
+    <span id="loadingText">Generating...</span>
+  </div>
+
+<script>
+"use strict";
+(function(){
+  const SIZE = 4;
+  let tileId = 0;
+
+  function Tile(position, value){
+    this.x = position.x; this.y = position.y;
+    this.value = value; this.id = ++tileId;
+    this.previousPosition = null; this.mergedFrom = null;
+  }
+  Tile.prototype.savePosition = function(){ this.previousPosition = {x:this.x,y:this.y}; };
+  Tile.prototype.updatePosition = function(p){ this.x = p.x; this.y = p.y; };
+
+  function Grid(size){
+    this.size = size; this.cells = [];
+    for(let x=0;x<size;x++){ this.cells[x]=[]; for(let y=0;y<size;y++) this.cells[x][y]=null; }
+  }
+  Grid.prototype.eachCell = function(cb){ for(let x=0;x<this.size;x++) for(let y=0;y<this.size;y++) cb(x,y,this.cells[x][y]); };
+  Grid.prototype.withinBounds = function(c){ return c.x>=0 && c.x<this.size && c.y>=0 && c.y<this.size; };
+  Grid.prototype.cellContent = function(c){ return this.withinBounds(c) ? this.cells[c.x][c.y] : null; };
+  Grid.prototype.cellAvailable = function(c){ return !this.cellContent(c); };
+  Grid.prototype.insertTile = function(t){ this.cells[t.x][t.y] = t; };
+  Grid.prototype.removeTile = function(t){ this.cells[t.x][t.y] = null; };
+  Grid.prototype.availableCells = function(){
+    const out=[]; this.eachCell((x,y,t)=>{ if(!t) out.push({x,y}); }); return out;
+  };
+  Grid.prototype.randomAvailableCell = function(){
+    const cells=this.availableCells(); return cells.length ? cells[Math.floor(Math.random()*cells.length)] : null;
+  };
+  Grid.prototype.cellsAvailable = function(){ return this.availableCells().length>0; };
+
+  const board = document.getElementById('board');
+  const gridBg = document.getElementById('gridBg');
+  const tileContainer = document.getElementById('tileContainer');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const overlay = document.getElementById('overlay');
+  const ovEmoji = document.getElementById('ovEmoji');
+  const ovTitle = document.getElementById('ovTitle');
+  const ovSub = document.getElementById('ovSub');
+  const ovBtn = document.getElementById('ovBtn');
+  const toastEl = document.getElementById('toast');
+  const floaters = document.getElementById('floaters');
+
+  let grid, score, best, won, over, keptPlaying;
+
+  best = parseInt(localStorage.getItem('mini2048_best')||'0',10) || 0;
+  bestEl.textContent = best;
+
+  // Background grid cells
+  for(let i=0;i<SIZE*SIZE;i++){ const c=document.createElement('div'); c.className='grid-cell'; gridBg.appendChild(c); }
+
+  // Floating decorative elements
+  const EMOJIS = ['🎮','🍬','✨','🎈','🧩','⭐','🎉','🌈','💛'];
+  (function makeFloaters(){
+    const n = 14;
+    for(let i=0;i<n;i++){
+      const el = document.createElement('div');
+      el.className = 'floater';
+      el.textContent = EMOJIS[i % EMOJIS.length];
+      el.style.left = (Math.random()*94) + 'vw';
+      el.style.fontSize = (16 + Math.random()*20) + 'px';
+      el.style.opacity = (0.25 + Math.random()*0.35).toFixed(2);
+      el.style.animationDuration = (14 + Math.random()*16) + 's';
+      el.style.animationDelay = (-Math.random()*20) + 's';
+      floaters.appendChild(el);
+    }
+  })();
+
+  function layout(){
+    const w = board.clientWidth;
+    const gap = Math.round(w*0.028);
+    const tile = (w - gap*5)/4;
+    board.style.setProperty('--gap', gap+'px');
+    board.style.setProperty('--tile-size', tile+'px');
+  }
+
+  function toast(msg){
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(()=>toastEl.classList.remove('show'),1600);
+  }
+
+  function tileClass(v){
+    if(v<=2048) return 't'+v;
+    return 'tsuper';
+  }
+  function fontFor(v, tile){
+    const d = String(v).length;
+    const f = d<=2?0.46 : d===3?0.38 : d===4?0.31 : 0.25;
+    return (tile*f)+'px';
+  }
+
+  function addTileEl(tile){
+    const wrap = document.createElement('div');
+    wrap.className = 'tile';
+    const inner = document.createElement('div');
+    inner.className = 'tile-inner ' + tileClass(tile.value);
+    inner.textContent = tile.value;
+    const tileSize = parseFloat(getComputedStyle(board).getPropertyValue('--tile-size')) || 80;
+    inner.style.fontSize = fontFor(tile.value, tileSize);
+    const pos = tile.previousPosition || {x:tile.x,y:tile.y};
+    wrap.style.setProperty('--col', pos.x);
+    wrap.style.setProperty('--row', pos.y);
+    wrap.appendChild(inner);
+    tileContainer.appendChild(wrap);
+
+    if(tile.previousPosition){
+      requestAnimationFrame(()=>{ wrap.style.setProperty('--col', tile.x); wrap.style.setProperty('--row', tile.y); });
+    } else if(tile.mergedFrom){
+      inner.classList.add('tile-merged');
+      tile.mergedFrom.forEach(addTileEl);
+    } else {
+      inner.classList.add('tile-new');
+    }
+  }
+
+  // Confetti burst on victory
+  function confettiBurst(){
+    const colors = ['🎉','🎈','✨','🎉','⭐','💛','🧡','💜','🌟'];
+    for(let i=0;i<50;i++){
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.textContent = colors[i % colors.length];
+      c.style.left = (Math.random()*100) + 'vw';
+      c.style.fontSize = (14 + Math.random()*16) + 'px';
+      c.style.animationDuration = (2.4 + Math.random()*2.2) + 's';
+      c.style.animationDelay = (Math.random()*0.9) + 's';
+      document.body.appendChild(c);
+      setTimeout(()=>c.remove(), 6000);
+    }
+  }
+
+  function actuate(){
+    tileContainer.innerHTML = '';
+    grid.eachCell((x,y,t)=>{ if(t) addTileEl(t); });
+    scoreEl.textContent = score;
+    if(score>best){ best=score; bestEl.textContent=best; localStorage.setItem('mini2048_best',best); }
+    if(over){ showOverlay(false); if(!overAnnounced){ playOver(); buzz([0,90,60,90]); overAnnounced=true; } }
+    else if(won && !keptPlaying){ if(!winAnnounced){ confettiBurst(); showOverlay(true); playWin(); buzz([0,70,40,70,40,140]); winAnnounced=true; } }
+    else { overlay.classList.remove('show'); }
+  }
+
+  function showOverlay(isWin){
+    overlay.className = 'overlay show' + (isWin?' win':'');
+    ovEmoji.textContent = isWin ? '🏆' : '😵';
+    ovTitle.textContent = isWin ? 'You reached 2048!' : 'Game Over';
+    ovSub.textContent = isWin
+      ? 'Incredible! Keep going for even higher scores, or share your win!'
+      : 'No moves left. Best: ' + best + ' — give it another shot!';
+    ovBtn.textContent = isWin ? 'Keep Going' : 'Play Again';
+  }
+
+  function setup(){
+    grid = new Grid(SIZE); score = 0; won = false; over = false; keptPlaying = false;
+    winAnnounced = false; overAnnounced = false; pendingMerges = [];
+    addRandomTile(); addRandomTile();
+    actuate();
+  }
+
+  function addRandomTile(){
+    if(grid.cellsAvailable()){
+      const v = Math.random()<0.9 ? 2 : 4;
+      grid.insertTile(new Tile(grid.randomAvailableCell(), v));
+    }
+  }
+
+  function prepareTiles(){
+    grid.eachCell((x,y,t)=>{ if(t){ t.mergedFrom=null; t.savePosition(); } });
+  }
+  function moveTile(tile, cell){
+    grid.cells[tile.x][tile.y] = null;
+    grid.cells[cell.x][cell.y] = tile;
+    tile.updatePosition(cell);
+  }
+  function getVector(dir){
+    return [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}][dir]; // 0=up 1=right 2=down 3=left
+  }
+  function buildTraversals(vec){
+    const xs=[0,1,2,3], ys=[0,1,2,3];
+    if(vec.x===1) xs.reverse();
+    if(vec.y===1) ys.reverse();
+    return {x:xs,y:ys};
+  }
+  function findFarthest(cell, vec){
+    let prev, next = cell;
+    do { prev = next; next = {x:prev.x+vec.x, y:prev.y+vec.y}; }
+    while(grid.withinBounds(next) && grid.cellAvailable(next));
+    return {farthest:prev, next};
+  }
+  function movesAvailable(){
+    if(grid.cellsAvailable()) return true;
+    for(let x=0;x<SIZE;x++) for(let y=0;y<SIZE;y++){
+      const t = grid.cells[x][y];
+      if(t){ for(const v of [{x:1,y:0},{x:0,y:1}]){
+        const o = grid.cellContent({x:x+v.x,y:y+v.y});
+        if(o && o.value===t.value) return true;
+      } }
+    }
+    return false;
+  }
+
+  function move(dir){
+    if(over || (won && !keptPlaying)) return;
+    const vec = getVector(dir);
+    const trav = buildTraversals(vec);
+    let moved = false;
+    pendingMerges = [];
+    prepareTiles();
+    trav.x.forEach(x=>trav.y.forEach(y=>{
+      const cell={x,y}; const tile=grid.cellContent(cell);
+      if(!tile) return;
+      const pos = findFarthest(cell, vec);
+      const next = grid.cellContent(pos.next);
+      if(next && next.value===tile.value && !next.mergedFrom){
+        const merged = new Tile(pos.next, tile.value*2);
+        merged.mergedFrom = [tile, next];
+        grid.insertTile(merged); grid.removeTile(tile);
+        tile.updatePosition(pos.next);
+        score += merged.value;
+        if(merged.value===2048) won = true;
+        pendingMerges.push(merged.value);
+        moved = true;
+      } else {
+        moveTile(tile, pos.farthest);
+      }
+      if(cell.x!==tile.x || cell.y!==tile.y) moved = true;
+    }));
+    if(moved){
+      addRandomTile();
+      if(!movesAvailable()) over = true;
+      actuate();
+      if(pendingMerges.length){ playMerges(pendingMerges); buzz(16); }
+      pendingMerges = [];
+    }
+  }
+
+  // Keyboard controls
+  const keyMap = {38:0,39:1,40:2,37:3,87:0,68:1,83:2,65:3,75:0,76:1,74:2,72:3};
+  window.addEventListener('keydown', e=>{
+    ensureAudio();
+    if(e.which in keyMap){ e.preventDefault(); move(keyMap[e.which]); }
+    if(e.which===82){ setup(); }
+  });
+
+  // Touch swipe
+  let sx=0, sy=0, tracking=false;
+  board.addEventListener('touchstart', e=>{ if(e.touches.length===1){ sx=e.touches[0].clientX; sy=e.touches[0].clientY; tracking=true; } }, {passive:true});
+  board.addEventListener('touchmove', e=>{ if(tracking) e.preventDefault(); }, {passive:false});
+  board.addEventListener('touchend', e=>{
+    if(!tracking) return; tracking=false;
+    const t = e.changedTouches[0]; const dx=t.clientX-sx, dy=t.clientY-sy;
+    if(Math.max(Math.abs(dx),Math.abs(dy))<24) return;
+    if(Math.abs(dx)>Math.abs(dy)) move(dx>0?1:3); else move(dy>0?2:0);
+  }, {passive:true});
+
+  // Buttons
+  document.getElementById('newGame').addEventListener('click', ()=>{ ensureAudio(); setup(); });
+  ovBtn.addEventListener('click', ()=>{ if(won && !keptPlaying){ keptPlaying=true; overlay.classList.remove('show'); } else setup(); });
+
+  // Rules modal
+  const rulesModal = document.getElementById('rulesModal');
+  const rulesBtn = document.getElementById('rulesBtn');
+  const rulesClose = document.getElementById('rulesClose');
+  rulesBtn.addEventListener('click', ()=> rulesModal.classList.add('show'));
+  rulesClose.addEventListener('click', ()=> rulesModal.classList.remove('show'));
+  rulesModal.addEventListener('click', e=>{ if(e.target===rulesModal) rulesModal.classList.remove('show'); });
+
+  // ===== Sound & Vibration Feedback =====
+  let audioCtx = null;
+  let feedbackOn = localStorage.getItem('mini2048_feedback') !== 'off';
+  let winAnnounced = false, overAnnounced = false;
+  let pendingMerges = [];
+  function ensureAudio(){
+    if(!audioCtx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(AC){ try{ audioCtx = new AC(); }catch(e){ audioCtx = null; } }
+    }
+    if(audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume(); }
+  }
+  function blip(freq, t0, dur, type, vol){
+    if(!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type || 'triangle';
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.22, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(audioCtx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  }
+  function playMerges(values){
+    if(!feedbackOn || !values.length) return;
+    ensureAudio(); if(!audioCtx) return;
+    const sorted = values.slice().sort((a,b)=>a-b).slice(-4);
+    sorted.forEach((v,i)=>{
+      const step = Math.log2(v);
+      const freq = 300 * Math.pow(1.0595, step*2);
+      blip(freq, audioCtx.currentTime + i*0.055, 0.16, 'triangle', 0.2);
+    });
+  }
+  function playWin(){
+    if(!feedbackOn) return; ensureAudio(); if(!audioCtx) return;
+    [523.25,659.25,783.99,1046.5].forEach((f,i)=> blip(f, audioCtx.currentTime + i*0.11, 0.3, 'triangle', 0.24));
+  }
+  function playOver(){
+    if(!feedbackOn) return; ensureAudio(); if(!audioCtx) return;
+    [392,329.63,261.63].forEach((f,i)=> blip(f, audioCtx.currentTime + i*0.14, 0.34, 'sine', 0.2));
+  }
+  function buzz(pattern){
+    if(feedbackOn && navigator.vibrate){ try{ navigator.vibrate(pattern); }catch(e){} }
+  }
+  // Sound toggle button
+  const feedbackBtn = document.getElementById('feedbackBtn');
+  function updateFeedbackIcon(){ feedbackBtn.textContent = feedbackOn ? '🔊' : '🔇'; }
+  feedbackBtn.addEventListener('click', ()=>{
+    feedbackOn = !feedbackOn;
+    localStorage.setItem('mini2048_feedback', feedbackOn ? 'on' : 'off');
+    updateFeedbackIcon();
+    if(feedbackOn){ ensureAudio(); blip(660, audioCtx.currentTime, 0.16, 'triangle', 0.22); }
+  });
+  updateFeedbackIcon();
+
+  // Share
+  document.getElementById('shareBtn').addEventListener('click', async ()=>{
+    const text = 'I just hit ' + best + ' in 2048 AI Edition! Challenge me 👉';
+    const url = location.href;
+    if(navigator.share){
+      try{ await navigator.share({title:'2048 AI Edition', text, url}); return; }catch(e){}
+    }
+    try{ await navigator.clipboard.writeText(url); toast('Link copied — share it!'); }
+    catch(e){ toast(url); }
+  });
+
+  window.addEventListener('resize', layout);
+  layout(); setup();
+
+  // ============================================================
+  //  AI Features — Pollinations API Integration
+  // ============================================================
+  const SKIN_MODEL = 'community/scriptsnsenses-sys/flux-2-dev-free';
+  const TEXT_MODEL = 'community/YoannDev90/qwen3.7-flash';
+
+  // Store original backgrounds for reset
+  const _origBgImages = [];
+  document.querySelectorAll('.bg-img').forEach((bg, i) => {
+    _origBgImages[i] = bg.style.backgroundImage;
+  });
+  const _origBoardBg = 'rgba(255,255,255,.12)';
+
+  let currentSkin = 'Candy Land';
+
+  // --- Loading indicator ---
+  function showLoading(text){
+    document.getElementById('loadingText').textContent = text;
+    document.getElementById('loadingToast').classList.add('show');
+  }
+  function hideLoading(){
+    document.getElementById('loadingToast').classList.remove('show');
+  }
+
+  // --- AI Skin Generation ---
+  const SKIN_THEMES = [
+    { name: 'Candy Land', prompt: 'candy theme, colorful candies, lollipops, sweet shop, vibrant pastel rainbow, playful game aesthetic, high quality, detailed' },
+    { name: 'Chinese Festival', prompt: 'chinese traditional festival, red lanterns, gold coins, warm orange red tones, festive celebration atmosphere, elegant, high quality' },
+    { name: 'Cyber Neon', prompt: 'cyberpunk neon city, purple cyan glowing lights, futuristic, dark background, vibrant neon, game aesthetic, high quality' },
+    { name: 'Sakura Garden', prompt: 'cherry blossom garden, pink sakura petals falling, soft pastel tones, japanese aesthetic, peaceful, gentle, high quality' },
+    { name: 'Halloween', prompt: 'halloween theme, orange black purple colors, pumpkins, spooky but fun, game aesthetic, mysterious, high quality' },
+    { name: 'Christmas Snow', prompt: 'christmas winter wonderland, snow covered trees, red green gold festive lights, cozy holiday spirit, magical, high quality' },
+    { name: 'Tropical Beach', prompt: 'tropical beach summer, turquoise ocean water, sandy beach, palm trees, sunny bright, relaxed vacation vibes, vibrant, high quality' },
+    { name: 'Galaxy Space', prompt: 'galaxy space nebula, stars, deep purple blue cosmic colors, mysterious awe inspiring, vast universe, high quality, detailed' }
+  ];
+
+  document.getElementById('aiSkinBtn').addEventListener('click', async () => {
+    // Pick a random theme
+    const idx = Math.floor(Math.random() * SKIN_THEMES.length);
+    const theme = SKIN_THEMES[idx];
+
+    showLoading('Generating "' + theme.name + '" skin...');
+
+    try {
+      const fullPrompt = `${theme.prompt}, 2048 game skin background, square format, high resolution`;
+      const encoded = encodeURIComponent(fullPrompt);
+      const imageUrl = `https://image.pollinations.ai/prompt/${encoded}?model=${encodeURIComponent(SKIN_MODEL)}&width=512&height=512`;
+
+      // Preload image to verify accessibility
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = imageUrl;
+        setTimeout(() => reject(new Error('timeout')), 30000);
+      });
+
+      applySkin(imageUrl, theme.name);
+    } catch(err) {
+      console.error('Skin generation failed:', err);
+      toast('Skin generation failed, please try again later.');
+    } finally {
+      hideLoading();
+    }
+  });
+
+  function applySkin(imageUrl, skinName){
+    // Apply background images
+    document.querySelectorAll('.bg-img').forEach((bg, i) => {
+      bg.style.backgroundImage = `url('${imageUrl}')`;
+    });
+
+    // Apply board background
+    board.style.background = `linear-gradient(135deg, rgba(20,8,30,.75), rgba(40,15,60,.6)), url('${imageUrl}') center/cover`;
+
+    // Update indicator
+    document.getElementById('skinIndicator').textContent = `🎨 ${skinName}`;
+    currentSkin = skinName;
+
+    toast('Applied: ' + skinName + ' 🎉');
+  }
+
+  // --- Reset to default skin ---
+  document.getElementById('skinResetBtn').addEventListener('click', () => {
+    document.querySelectorAll('.bg-img').forEach((bg, i) => {
+      bg.style.backgroundImage = _origBgImages[i] || '';
+    });
+    board.style.background = _origBoardBg;
+    document.getElementById('skinIndicator').textContent = '🍬 Candy Land';
+    currentSkin = 'Candy Land';
+    toast('Default skin restored');
+  });
+
+  // --- AI Hint ---
+  document.getElementById('aiHintBtn').addEventListener('click', async () => {
+    showLoading('AI is analyzing the board...');
+
+    try {
+      // Build board state description
+      const tiles = [];
+      grid.eachCell((x, y, t) => {
+        if (t) tiles.push(`(${x},${y}):${t.value}`);
+      });
+      const boardDesc = tiles.length > 0 ? tiles.join(', ') : 'board is empty';
+      const emptyCount = grid.availableCells().length;
+
+      const prompt = `You are a 2048 game expert. Current score: ${score}, best score: ${best}, empty cells: ${emptyCount}. Board state: ${boardDesc}. Give the player a short, practical tip (under 60 words) to help improve their score. Answer in English only, no prefix.`;
+
+      const response = await fetch(
+        `https://text.pollinations.ai/openai?model=${encodeURIComponent(TEXT_MODEL)}&prompt=${encodeURIComponent(prompt)}`,
+        { method: 'GET' }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      let data;
+      let hint = '';
+      try {
+        data = await response.json();
+        hint = data.choices?.[0]?.message?.content?.trim()
+             || data.choices?.[0]?.text?.trim()
+             || '';
+      } catch {
+        // Non-JSON response, treat as plain text
+        hint = (await response.text()).trim();
+      }
+
+      if (!hint) {
+        hint = 'Unable to get a hint right now, please try again later.';
+      }
+
+      showHintPanel(hint);
+    } catch(err) {
+      console.error('Hint generation failed:', err);
+      toast('Hint generation failed, please try again');
+    } finally {
+      hideLoading();
+    }
+  });
+
+  function showHintPanel(text){
+    document.getElementById('hintText').textContent = text;
+    document.getElementById('hintPanel').classList.add('show');
+  }
+
+  // Close hint panel
+  document.getElementById('hintClose').addEventListener('click', () => {
+    document.getElementById('hintPanel').classList.remove('show');
+  });
+
+  // Click outside to close
+  document.getElementById('hintPanel').addEventListener('click', (e) => {
+    if (e.target.id === 'hintPanel') {
+      document.getElementById('hintPanel').classList.remove('show');
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
