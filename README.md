@@ -1,8 +1,8 @@
 # 2048 AI Edition
 
 <p align="center">
-  <a href="https://pollinations.ai">
-    <img src="https://img.shields.io/badge/Made%20with-Pollinations-FF4F9A?style=for-the-badge" alt="Made with Pollinations">
+  <a href="https://pollinations.ai/?ref=badge">
+    <img src="https://raw.githubusercontent.com/pollinations/pollinations/main/packages/ui/src/brand/badge-made-with.svg" alt="Made with pollinations.ai">
   </a>
 </p>
 
