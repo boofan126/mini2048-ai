@@ -353,6 +353,12 @@
   const SIZE = 4;
   let tileId = 0;
 
+  // Safe storage wrapper — prevents crashes when localStorage is blocked (private mode, file://, etc.)
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem(k); return v===null ? d : v; } catch(e){ return d; } },
+    set(k, v){ try { localStorage.setItem(k, v); } catch(e){ /* ignore */ } }
+  };
+
   function Tile(position, value){
     this.x = position.x; this.y = position.y;
     this.value = value; this.id = ++tileId;
@@ -394,7 +400,7 @@
 
   let grid, score, best, won, over, keptPlaying;
 
-  best = parseInt(localStorage.getItem('mini2048_best')||'0',10) || 0;
+  best = parseInt(store.get('mini2048_best','0'),10) || 0;
   bestEl.textContent = best;
 
   // Background grid cells
@@ -484,7 +490,7 @@
     tileContainer.innerHTML = '';
     grid.eachCell((x,y,t)=>{ if(t) addTileEl(t); });
     scoreEl.textContent = score;
-    if(score>best){ best=score; bestEl.textContent=best; localStorage.setItem('mini2048_best',best); }
+    if(score>best){ best=score; bestEl.textContent=best; store.set('mini2048_best',best); }
     if(over){ showOverlay(false); if(!overAnnounced){ playOver(); buzz([0,90,60,90]); overAnnounced=true; } }
     else if(won && !keptPlaying){ if(!winAnnounced){ confettiBurst(); showOverlay(true); playWin(); buzz([0,70,40,70,40,140]); winAnnounced=true; } }
     else { overlay.classList.remove('show'); }
@@ -617,7 +623,7 @@
 
   // ===== Sound & Vibration Feedback =====
   let audioCtx = null;
-  let feedbackOn = localStorage.getItem('mini2048_feedback') !== 'off';
+  let feedbackOn = store.get('mini2048_feedback','on') !== 'off';
   let winAnnounced = false, overAnnounced = false;
   let pendingMerges = [];
   function ensureAudio(){
@@ -665,7 +671,7 @@
   function updateFeedbackIcon(){ feedbackBtn.textContent = feedbackOn ? '🔊' : '🔇'; }
   feedbackBtn.addEventListener('click', ()=>{
     feedbackOn = !feedbackOn;
-    localStorage.setItem('mini2048_feedback', feedbackOn ? 'on' : 'off');
+    store.set('mini2048_feedback', feedbackOn ? 'on' : 'off');
     updateFeedbackIcon();
     if(feedbackOn){ ensureAudio(); blip(660, audioCtx.currentTime, 0.16, 'triangle', 0.22); }
   });
