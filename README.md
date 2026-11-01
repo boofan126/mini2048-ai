@@ -31,6 +31,12 @@ Direct links:
 - https://raw.githubusercontent.com/boofan126/mini2048-ai/main/screenshots/screenshot-gameplay-advanced.png
 - https://raw.githubusercontent.com/boofan126/mini2048-ai/main/screenshots/screenshot-gameover.png
 
+Release assets (github.com hosted, same images):
+- https://github.com/boofan126/mini2048-ai/releases/download/screenshots/screenshot-gameplay-early.png
+- https://github.com/boofan126/mini2048-ai/releases/download/screenshots/screenshot-gameplay-advanced.png
+- https://github.com/boofan126/mini2048-ai/releases/download/screenshots/screenshot-gameover.png
+- Release page: https://github.com/boofan126/mini2048-ai/releases/tag/screenshots
+
 ## License
 
 Based on [gabrielecirulli/2048](https://github.com/gabrielecirulli/2048) (MIT).
