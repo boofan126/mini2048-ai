@@ -20,6 +20,17 @@ A single-file 2048 game with AI-powered features via Pollinations API.
   - Images: `https://image.pollinations.ai/prompt/{prompt}?model=community/scriptsnsenses-sys/flux-2-dev-free`
   - Text: `https://text.pollinations.ai/openai?model=community/YoannDev90/qwen3.7-flash&prompt={prompt}`
 
+## Screenshots
+
+| Early game | Advanced game | Game Over |
+|------------|--------------|-----------|
+| ![Early](https://raw.githubusercontent.com/boofan126/mini2048-ai/main/screenshots/screenshot-gameplay-early.png) | ![Advanced](https://raw.githubusercontent.com/boofan126/mini2048-ai/main/screenshots/screenshot-gameplay-advanced.png) | ![Game Over](https://raw.githubusercontent.com/boofan126/mini2048-ai/main/screenshots/screenshot-gameover.png) |
+
+Direct links:
+- https://raw.githubusercontent.com/boofan126/mini2048-ai/main/screenshots/screenshot-gameplay-early.png
+- https://raw.githubusercontent.com/boofan126/mini2048-ai/main/screenshots/screenshot-gameplay-advanced.png
+- https://raw.githubusercontent.com/boofan126/mini2048-ai/main/screenshots/screenshot-gameover.png
+
 ## License
 
 Based on [gabrielecirulli/2048](https://github.com/gabrielecirulli/2048) (MIT).
